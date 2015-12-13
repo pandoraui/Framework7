@@ -1,7 +1,11 @@
 (function(){
     'use strict';
     var gulp = require('gulp'),
+        BS = require('browser-sync'),
+        bs = BS.create(),
+        bsReload = bs.reload,
         connect = require('gulp-connect'),
+        connectReload = connect.reload(),
         open = require('gulp-open'),
         less = require('gulp-less'),
         jade = require('gulp-jade'),
@@ -34,6 +38,12 @@
                 scripts: 'dist/js/'
             },
             ks: {
+                _app : {
+                    root: '_app/',
+                    css:  '_app/css/',
+                    jade: '_app/jade/*.jade',
+                    less: '_app/less/*.less',
+                },
                 ios : {
                     root: 'kitchen-sink-ios/',
                     css: 'kitchen-sink-ios/css/',
@@ -50,6 +60,7 @@
             source: {
                 root: 'src/',
                 styles: {
+                    _app: 'src/less/_app/',
                     ios: 'src/less/ios/',
                     material: 'src/less/material/'
                 },
@@ -76,7 +87,7 @@
                 'src/js/progressbar.js',
                 'src/js/panels.js',
                 'src/js/lazy-load.js',
-                'src/js/material-preloader.js',
+                'src/js/material-pconnectReloader.js',
                 'src/js/messages.js',
                 'src/js/swipeout.js',
                 'src/js/sortable.js',
@@ -163,7 +174,7 @@
             },
 
         };
-        
+
     function addJSIndent (file, t) {
         var addIndent = '        ';
         var filename = file.path.split('src/js/')[1];
@@ -203,15 +214,44 @@
             .pipe(jshint.reporter(stylish))
             .pipe(sourcemaps.write('./'))
             .pipe(gulp.dest(paths.build.scripts))
-            .pipe(connect.reload())
+            .pipe(connectReload)
             .on('end', function () {
                 cb();
             });
-        
+
+    });
+    gulp.task('styles-base', function (cb) {
+        var cbs = 0;
+        [
+          'framework7._app.less',
+          'framework7._app.rtl.less',
+          'framework7._app.colors.less'
+        ].forEach(function(lessFilePath, b){
+            lessFilePath = paths.source.styles._app + lessFilePath;
+            gulp.src([lessFilePath])
+                .pipe(less({
+                    paths: [ path.join(__dirname, 'less', 'includes') ]
+                }))
+                .pipe(header(f7.banner, {
+                  pkg : f7.pkg,
+                  date: f7.date,
+                  theme: 'Default Theme'
+                }))
+                .pipe(gulp.dest(paths.build.styles))
+                .pipe(connectReload)
+                .on('end', function () {
+                    cbs ++;
+                    if (cbs === 3) cb();
+                });
+        });
     });
     gulp.task('styles-ios', function (cb) {
         var cbs = 0;
-        ['framework7.ios.less', 'framework7.ios.rtl.less', 'framework7.ios.colors.less'].forEach(function(lessFilePath, b){
+        [
+          'framework7.ios.less',
+          'framework7.ios.rtl.less',
+          'framework7.ios.colors.less'
+        ].forEach(function(lessFilePath, b){
             lessFilePath = paths.source.styles.ios + lessFilePath;
             gulp.src([lessFilePath])
                 .pipe(less({
@@ -219,7 +259,7 @@
                 }))
                 .pipe(header(f7.banner, { pkg : f7.pkg, date: f7.date, theme: 'iOS Theme' }))
                 .pipe(gulp.dest(paths.build.styles))
-                .pipe(connect.reload())
+                .pipe(connectReload)
                 .on('end', function () {
                     cbs ++;
                     if (cbs === 3) cb();
@@ -228,7 +268,11 @@
     });
     gulp.task('styles-material', function (cb) {
         var cbs = 0;
-        ['framework7.material.less', 'framework7.material.rtl.less', 'framework7.material.colors.less'].forEach(function(lessFilePath, b){
+        [
+          'framework7.material.less',
+          'framework7.material.rtl.less',
+          'framework7.material.colors.less'
+        ].forEach(function(lessFilePath, b){
             lessFilePath = paths.source.styles.material + lessFilePath;
             gulp.src([lessFilePath])
                 .pipe(less({
@@ -236,13 +280,13 @@
                 }))
                 .pipe(header(f7.banner, { pkg : f7.pkg, date: f7.date, theme: 'Google Material Theme' }))
                 .pipe(gulp.dest(paths.build.styles))
-                .pipe(connect.reload())
+                .pipe(connectReload)
                 .on('end', function () {
                     cbs ++;
                     if (cbs === 3) cb();
                 });
         });
-            
+
     });
 
     // F7 Demo App
@@ -265,24 +309,36 @@
 
         gulp.src(paths.source.root + 'img/*.*')
             .pipe(gulp.dest(paths.build.root + 'img/'))
-            .pipe(connect.reload());
+            .pipe(connectReload);
         cb();
     });
 
-    gulp.task('build', ['scripts', 'styles-ios', 'styles-material', 'demo-app'], function (cb) {
+    gulp.task('build', ['scripts', 'styles-base', 'styles-ios', 'styles-material', 'demo-app'], function (cb) {
         cb();
     });
 
     /* ==================================================================
     Kitchen Sink IOS
     ================================================================== */
+    // gulp.task('ks-_app-jade', function (cb) {
+    //     gulp.src(paths.ks._app.jade)
+    //         .pipe(jade({
+    //             pretty: true,
+    //         }))
+    //         .pipe(gulp.dest(paths.ks._app.root))
+    //         .pipe(connectReload)
+    //         .on('end', function () {
+    //           console.log('end Jade')
+    //             cb();
+    //         });
+    // });
     gulp.task('ks-ios-jade', function (cb) {
         gulp.src(paths.ks.ios.jade)
             .pipe(jade({
                 pretty: true,
             }))
             .pipe(gulp.dest(paths.ks.ios.root))
-            .pipe(connect.reload())
+            .pipe(connectReload)
             .on('end', function () {
                 cb();
             });
@@ -293,7 +349,7 @@
                 paths: [ path.join(__dirname, 'less', 'includes') ]
             }))
             .pipe(gulp.dest(paths.ks.ios.css))
-            .pipe(connect.reload())
+            .pipe(connectReload)
             .on('end', function () {
                 cb();
             });
@@ -301,13 +357,24 @@
     /* ==================================================================
     Kitchen Sink Material
     ================================================================== */
+    gulp.task('_app-less', function (cb) {
+        gulp.src(paths.ks._app.less)
+            .pipe(less({
+                paths: [ path.join(__dirname, 'less', 'includes') ]
+            }))
+            .pipe(gulp.dest(paths.ks._app.css))
+            .pipe(connectReload)
+            .on('end', function () {
+                cb();
+            });
+    });
     gulp.task('ks-material-jade', function (cb) {
         gulp.src(paths.ks.material.jade)
             .pipe(jade({
                 pretty: true,
             }))
             .pipe(gulp.dest(paths.ks.material.root))
-            .pipe(connect.reload())
+            .pipe(connectReload)
             .on('end', function () {
                 cb();
             });
@@ -318,7 +385,7 @@
                 paths: [ path.join(__dirname, 'less', 'includes') ]
             }))
             .pipe(gulp.dest(paths.ks.material.css))
-            .pipe(connect.reload())
+            .pipe(connectReload)
             .on('end', function () {
                 cb();
             });
@@ -340,7 +407,7 @@
                     paths: [ path.join(__dirname, 'less', 'includes') ]
                 }))
                 .pipe(gulp.dest(exampleRoot + 'css/'))
-                .pipe(connect.reload());
+                .pipe(connectReload);
         }
         cb();
     });
@@ -376,11 +443,11 @@
 
                 // Minify CSS
                 var minifiedCSS = [
-                    paths.dist.styles + f7.filename + '.ios.css', 
-                    paths.dist.styles + f7.filename + '.ios.rtl.css', 
+                    paths.dist.styles + f7.filename + '.ios.css',
+                    paths.dist.styles + f7.filename + '.ios.rtl.css',
                     paths.dist.styles + f7.filename + '.ios.colors.css',
-                    paths.dist.styles + f7.filename + '.material.css', 
-                    paths.dist.styles + f7.filename + '.material.rtl.css', 
+                    paths.dist.styles + f7.filename + '.material.css',
+                    paths.dist.styles + f7.filename + '.material.rtl.css',
                     paths.dist.styles + f7.filename + '.material.colors.css'
                 ];
                 gulp.src(minifiedCSS)
@@ -395,7 +462,7 @@
                     .pipe(gulp.dest(paths.dist.styles));
             });
     });
-    
+
     /* =================================
     Custom Build
     ================================= */
@@ -469,7 +536,7 @@
                 path.basename = path.basename + '.min';
             }))
             .pipe(gulp.dest(paths.custom.scripts));
-        
+
         // CSSes
         [customLessIOS, customLessMaterial].forEach(function (customLessList) {
             var theme = customLessList === customLessIOS ? 'ios' : 'material';
@@ -505,19 +572,19 @@
         // Demo App
         gulp.watch([paths.source.root + 'templates/*.jade', paths.source.root + 'my-app/*.*', paths.source.root + 'img/*.*'], ['demo-app']);
 
-        // KS
+        // KS Ios
         gulp.watch(paths.ks.ios.less, [ 'ks-ios-less' ]);
         gulp.watch(paths.ks.ios.jade, [ 'ks-ios-jade' ]);
         gulp.watch(paths.ks.ios.root + 'js/*.js', function () {
             gulp.src(paths.ks.ios.root)
-                .pipe(connect.reload());
+                .pipe(connectReload);
         });
         // KS Material
         gulp.watch(paths.ks.material.less, [ 'ks-material-less' ]);
         gulp.watch(paths.ks.material.jade, [ 'ks-material-jade' ]);
         gulp.watch(paths.ks.material.root + 'js/*.js', function () {
             gulp.src(paths.ks.material.root)
-                .pipe(connect.reload());
+                .pipe(connectReload);
         });
         // Examples
         var i;
@@ -525,7 +592,7 @@
             var exampleRoot = paths.examples.root + paths.examples.list[i] + '/';
             gulp.watch([exampleRoot + 'jade/*.jade', exampleRoot + 'less/*.less'], [ 'examples' ], function () {
                 gulp.src([exampleRoot + 'jade/*.jade', exampleRoot + 'less/*.less'])
-                    .pipe(connect.reload());
+                    .pipe(connectReload);
             });
         }
     });
@@ -533,18 +600,40 @@
     gulp.task('connect', function () {
         return connect.server({
             root: [ paths.root ],
-            livereload: true,
+            liveconnectReload: true,
             port:'3000'
         });
     });
-    
+
     gulp.task('open', function () {
         return gulp.src('./index.html').pipe(open({ uri: 'http://localhost:3000/index.html'}));
     });
 
+    gulp.task('dev:server', function() {
+      // var bs = BS.create();
+      bs.init({
+        server: ['./'],
+        open: 'external',
+      });
+
+      // _App
+      gulp.watch(paths.ks._app.less, [ '_app-less' ]);
+      // gulp.watch(paths.ks._app.jade, [ 'ks-_app-jade' ]);
+      gulp.watch(paths.ks._app.root + '**/*', bsReload);
+    });
+
+    gulp.task('watch:_app', function () {
+        // F7 styles and scripts
+        gulp.watch(paths.source.scripts, [ 'scripts' ]);
+        gulp.watch(paths.source.styles.ios + '*.less', [ 'styles-ios' ]);
+        gulp.watch(paths.source.styles.material + '*.less', [ 'styles-material' ]);
+    });
+
+    gulp.task('dev', [ 'dev:server' ]);
+
     gulp.task('server', [ 'watch', 'connect', 'open' ]);
 
     gulp.task('default', [ 'server' ]);
-    
+
     gulp.task('test', [ 'build' ]);
 })();
